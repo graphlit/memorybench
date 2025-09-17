@@ -1,4 +1,3 @@
-import { parseArgs } from "util";
 import type { BenchmarkRegistry, BenchmarkType } from "./benchmarks";
 import { ragBenchmarkData } from "./benchmarks";
 import { AQRAGProvider, RAGProvider, type TemplateType } from "./providers";
