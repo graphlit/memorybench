@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Batch evaluation script for LongMemEval results
-# Usage: ./evaluate-batch.sh --runId=<runId> [--questionType=<questionType>]
+# Usage: ./evaluate-batch.sh --runId=<runId> [--questionType=<questionType>] [--startPosition=<startPos>] [--endPosition=<endPos>]
 
 set -e
 
@@ -11,6 +11,8 @@ parse_args() {
         case "$1" in
             --runId=*) RUN_ID="${1#*=}" ;;
             --questionType=*) QUESTION_TYPE="${1#*=}" ;;
+            --startPosition=*) START_POS="${1#*=}" ;;
+            --endPosition=*) END_POS="${1#*=}" ;;
             *) echo "Unknown parameter passed: $1"; exit 1 ;;
         esac
         shift
@@ -20,9 +22,10 @@ parse_args() {
 parse_args "$@"
 
 if [ -z "$RUN_ID" ]; then
-    echo "Usage: ./evaluate-batch.sh --runId=<runId> [--questionType=<questionType>]"
+    echo "Usage: ./evaluate-batch.sh --runId=<runId> [--questionType=<questionType>] [--startPosition=<startPos>] [--endPosition=<endPos>]"
     echo "Example: ./evaluate-batch.sh --runId=run1"
     echo "Example: ./evaluate-batch.sh --runId=run1 --questionType=single-session-user"
+    echo "Example: ./evaluate-batch.sh --runId=run1 --questionType=single-session-user --startPosition=1 --endPosition=50"
     exit 1
 fi
 
@@ -38,10 +41,19 @@ if [ -n "$QUESTION_TYPE" ]; then
 else
     echo "Question type: all"
 fi
-echo "Using all results from each file"
+
+if [ -n "$START_POS" ] && [ -n "$END_POS" ]; then
+    echo "Processing range: $START_POS to $END_POS"
+else
+    echo "Using all results from each file"
+fi
 echo ""
 
-if [ -n "$QUESTION_TYPE" ]; then
+if [ -n "$START_POS" ] && [ -n "$END_POS" ]; then
+    # When using start/end pos, we must provide the question type argument (use "all" if not specified)
+    TYPE_ARG="${QUESTION_TYPE:-all}"
+    cd "$ROOT_DIR" && bun run scripts/evaluate/evaluate.ts "$RUN_ID" "$TYPE_ARG" "$START_POS" "$END_POS"
+elif [ -n "$QUESTION_TYPE" ]; then
     cd "$ROOT_DIR" && bun run scripts/evaluate/evaluate.ts "$RUN_ID" "$QUESTION_TYPE"
 else
     cd "$ROOT_DIR" && bun run scripts/evaluate/evaluate.ts "$RUN_ID"

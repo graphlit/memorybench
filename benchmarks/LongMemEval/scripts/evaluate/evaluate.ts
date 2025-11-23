@@ -6,7 +6,7 @@ Uses a default model (gemini-3-pro-preview) to evaluate answer quality.
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { createVertex } from '@ai-sdk/google-vertex';
+import { createVertex } from '@ai-sdk/google-vertex/edge';
 import { generateText } from 'ai';
 import { config, validateConfig } from '../utils/config.ts';
 
@@ -25,7 +25,14 @@ if (args.length < 1) {
 }
 
 const runId = args[0];
-const questionTypeFilter = args[1]; // Optional
+let questionTypeFilter = args[1]; // Optional
+const startPosition = args[2] ? parseInt(args[2], 10) : undefined;
+const endPosition = args[3] ? parseInt(args[3], 10) : undefined;
+
+if (questionTypeFilter === 'all') {
+    questionTypeFilter = undefined;
+}
+
 // Fixed model
 const model = 'gemini-3-pro-preview';
 
@@ -35,6 +42,11 @@ if (questionTypeFilter) {
 } else {
     console.log(`Question type filter: all`);
 }
+
+if (startPosition && endPosition) {
+    console.log(`Processing range: ${startPosition} to ${endPosition}`);
+}
+
 console.log(`Using model: ${model}`);
 console.log(`Using ALL retrieved results from each file\n`);
 
@@ -90,9 +102,23 @@ if (questionTypeFilter) {
     console.log(`Found ${resultFiles.length} result files to evaluate\n`);
 }
 
+// Filter by position range if specified
+if (startPosition !== undefined && endPosition !== undefined) {
+    if (isNaN(startPosition) || isNaN(endPosition) || startPosition < 1 || endPosition < startPosition) {
+        console.error(`Invalid range: ${startPosition}-${endPosition}`);
+        process.exit(1);
+    }
+    
+    // positions are 1-based
+    const totalBeforeSlice = resultFiles.length;
+    resultFiles = resultFiles.slice(startPosition - 1, endPosition);
+    console.log(`Filtered to range ${startPosition}-${endPosition}: ${resultFiles.length} files (out of ${totalBeforeSlice})`);
+}
+
 // Output file path
 const typeSuffix = questionTypeFilter ? `-${questionTypeFilter}` : '';
-const outputFilename = `eval-${runId}${typeSuffix}-all.json`;
+const rangeSuffix = (startPosition && endPosition) ? `-${startPosition}-${endPosition}` : '-all';
+const outputFilename = `eval-${runId}${typeSuffix}${rangeSuffix}.json`;
 const outputPath = join(evalDir, outputFilename);
 
 interface EvaluationResult {

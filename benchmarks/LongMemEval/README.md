@@ -7,6 +7,8 @@ The benchmark requires the following environment variables to be set:
 - `SUPERMEMORY_API_KEY`: Your Supermemory API key.
 - `SUPERMEMORY_API_URL`: (Optional) API base URL, defaults to `https://api.supermemory.ai`.
 - `GOOGLE_VERTEX_PROJECT_ID`: Project ID for Google Vertex AI (required for evaluation).
+- `GOOGLE_CLIENT_EMAIL`: Google Service Account email (required for evaluation).
+- `GOOGLE_PRIVATE_KEY`: Google Service Account private key (required for evaluation).
 
 You can set these in your shell or environment before running the scripts.
 
@@ -59,7 +61,7 @@ bun run scripts/search/search.ts <questionId> <runId>
 
 From `memorybench/benchmarks/LongMemEval`:
 ```bash
-./scripts/search/search-batch.sh --runId=<runId> --questionType=<questionType> --startPosition=<startPos> --endPosition=<endPos>
+./scripts/search/search-batch.sh --runId=<runId> [--questionType=<questionType>] [--startPosition=<startPos>] [--endPosition=<endPos>]
 ```
 
 ## Evaluation
@@ -70,7 +72,7 @@ To evaluate results, use the scripts in `scripts/evaluate/`.
 
 From `memorybench/benchmarks/LongMemEval`:
 ```bash
-./scripts/evaluate/evaluate-batch.sh --runId=<runId> [--questionType=<questionType>]
+./scripts/evaluate/evaluate-batch.sh --runId=<runId> [--questionType=<questionType>] [--startPosition=<startPos>] [--endPosition=<endPos>]
 ```
 
 ## Available Question Types

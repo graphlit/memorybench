@@ -35,3 +35,10 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # Datasets
 datasets/
+
+# Results
+results/
+evaluations/
+
+# Checkpoints
+checkpoints/
