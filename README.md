@@ -1,9 +1,20 @@
 # MemoryBench
 
+A pluggable benchmarking framework for evaluating memory and context systems.
+
 <img width="3584" height="2154" alt="original" src="https://github.com/user-attachments/assets/7fe49b7e-ed0b-4861-92a5-fa5d199cfc72" />
 
 
-A pluggable benchmarking framework for evaluating memory and context systems.
+## Features
+
+- 🔌 Interoperable: mix and match any provider with any benchmark
+- 🧩 Bring your own benchmarks: plug in custom datasets and tasks
+- ♻️ Checkpointed runs: resume from any pipeline stage (ingest → index → search → answer → evaluate)
+- 🆚 Multi‑provider comparison: run the same benchmark across providers side‑by‑side
+- 🧪 Judge‑agnostic: swap GPT‑4o, Claude, Gemini, etc. without code changes
+- 📊 Structured reports: export run status, failures, and metrics for analysis
+- 🖥️ Web UI: inspect runs, questions, and failures interactively, in real-time!
+
 
 ```
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
@@ -21,16 +32,6 @@ A pluggable benchmarking framework for evaluating memory and context systems.
    │ Ingest │ Indexing│ Search │  Answer  │Evaluate│
    └────────┴─────────┴────────┴──────────┴────────┘
 ```
-
-## Features
-
-- 🔌 Interoperable: mix and match any provider with any benchmark
-- 🧩 Bring your own benchmarks: plug in custom datasets and tasks
-- ♻️ Checkpointed runs: resume from any pipeline stage (ingest → index → search → answer → evaluate)
-- 🆚 Multi‑provider comparison: run the same benchmark across providers side‑by‑side
-- 🧪 Judge‑agnostic: swap GPT‑4o, Claude, Gemini, etc. without code changes
-- 📊 Structured reports: export run status, failures, and metrics for analysis
-- 🖥️ Web UI: inspect runs, questions, and failures interactively
 
 ## Quick Start
 
