@@ -3,6 +3,10 @@ export interface Config {
     supermemoryBaseUrl: string
     mem0ApiKey: string
     zepApiKey: string
+    graphlitOrganizationId: string
+    graphlitEnvironmentId: string
+    graphlitJwtSecret: string
+    graphlitApiUri: string
     openaiApiKey: string
     anthropicApiKey: string
     googleApiKey: string
@@ -13,12 +17,23 @@ export const config: Config = {
     supermemoryBaseUrl: process.env.SUPERMEMORY_BASE_URL || "https://api.supermemory.ai",
     mem0ApiKey: process.env.MEM0_API_KEY || "",
     zepApiKey: process.env.ZEP_API_KEY || "",
+    graphlitOrganizationId: process.env.GRAPHLIT_ORGANIZATION_ID || "",
+    graphlitEnvironmentId: process.env.GRAPHLIT_ENVIRONMENT_ID || "",
+    graphlitJwtSecret: process.env.GRAPHLIT_JWT_SECRET || "",
+    graphlitApiUri: process.env.GRAPHLIT_API_URI || "",
     openaiApiKey: process.env.OPENAI_API_KEY || "",
     anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
     googleApiKey: process.env.GOOGLE_API_KEY || "",
 }
 
-export function getProviderConfig(provider: string): { apiKey: string; baseUrl?: string } {
+export interface GraphlitConfig {
+    organizationId: string
+    environmentId: string
+    jwtSecret: string
+    apiUri?: string
+}
+
+export function getProviderConfig(provider: string): { apiKey: string; baseUrl?: string; graphlit?: GraphlitConfig } {
     switch (provider) {
         case "supermemory":
             return { apiKey: config.supermemoryApiKey, baseUrl: config.supermemoryBaseUrl }
@@ -26,6 +41,16 @@ export function getProviderConfig(provider: string): { apiKey: string; baseUrl?:
             return { apiKey: config.mem0ApiKey }
         case "zep":
             return { apiKey: config.zepApiKey }
+        case "graphlit":
+            return {
+                apiKey: config.graphlitJwtSecret,
+                graphlit: {
+                    organizationId: config.graphlitOrganizationId,
+                    environmentId: config.graphlitEnvironmentId,
+                    jwtSecret: config.graphlitJwtSecret,
+                    apiUri: config.graphlitApiUri || undefined,
+                },
+            }
         default:
             throw new Error(`Unknown provider: ${provider}`)
     }

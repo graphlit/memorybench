@@ -4,7 +4,17 @@
   "type": "module",
   "scripts": {
     "start": "bun run src/index.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "bench": "bun run src/index.ts run",
+    "bench:graphlit": "bun run src/index.ts run -p graphlit -m gpt-5.2 -j gpt-5.2",
+    "bench:graphlit:locomo": "bun run src/index.ts run -p graphlit -b locomo -m gpt-5.2 -j gpt-5.2",
+    "bench:graphlit:longmemeval": "bun run src/index.ts run -p graphlit -b longmemeval -m gpt-5.2 -j gpt-5.2",
+    "bench:graphlit:convomem": "bun run src/index.ts run -p graphlit -b convomem -m gpt-5.2 -j gpt-5.2",
+    "bench:graphlit:quick": "bun run src/index.ts run -p graphlit -b locomo -l 5 -m gpt-5.2 -j gpt-5.2",
+    "status": "bun run src/index.ts status",
+    "failures": "bun run src/index.ts show-failures",
+    "serve": "bun run src/index.ts serve",
+    "help": "bun run src/index.ts help"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.56",
@@ -12,7 +22,9 @@
     "@ai-sdk/openai": "^2.0.88",
     "@getzep/zep-cloud": "^3.13.0",
     "ai": "^5.0.115",
+    "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
+    "graphlit-client": "^1.0.20251224001",
     "mem0ai": "^2.1.38",
     "supermemory": "^4.0.0",
     "zod": "^3.24.4"

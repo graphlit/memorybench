@@ -66,10 +66,14 @@ Available providers for storing and retrieving memories:
   zep            Zep - Long-term memory for AI assistants
                  Requires: ZEP_API_KEY
 
+  graphlit       Graphlit - Knowledge platform with RAG
+                 Requires: GRAPHLIT_ORGANIZATION_ID, GRAPHLIT_ENVIRONMENT_ID, GRAPHLIT_JWT_SECRET
+
 Usage:
   -p supermemory    Use Supermemory as the memory provider
   -p mem0           Use Mem0 as the memory provider
   -p zep            Use Zep as the memory provider
+  -p graphlit       Use Graphlit as the memory provider
 `)
 }
 
