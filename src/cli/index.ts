@@ -7,6 +7,7 @@ import { statusCommand } from "./commands/status"
 import { listQuestionsCommand } from "./commands/list-questions"
 import { showFailuresCommand } from "./commands/show-failures"
 import { serveCommand } from "./commands/serve"
+import { cleanupCommand } from "./commands/cleanup"
 import { getAvailableProviders } from "../providers"
 import { getAvailableBenchmarks } from "../benchmarks"
 import { listModelsByProvider, MODEL_ALIASES, DEFAULT_ANSWERING_MODEL } from "../utils/models"
@@ -26,6 +27,7 @@ Commands:
   list-questions  List all questions in a benchmark (with pagination)
   show-failures   Show failed questions from a run with full debugging data
   status          Check run status
+  cleanup         Delete provider data (collections, contents) for a run
   serve           Start the web UI server
   help            Show help (use 'help providers', 'help models', 'help benchmarks' for details)
 
@@ -177,6 +179,9 @@ export async function cli(args: string[]): Promise<void> {
             break
         case "show-failures":
             await showFailuresCommand(commandArgs)
+            break
+        case "cleanup":
+            await cleanupCommand(commandArgs)
             break
         case "serve":
             await serveCommand(commandArgs)

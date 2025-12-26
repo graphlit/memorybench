@@ -5,7 +5,7 @@ import { CheckpointManager } from "../checkpoint"
 import { logger } from "../../utils/logger"
 import { shouldStop } from "../../server/runState"
 
-const RATE_LIMIT_MS = 1000
+const DEFAULT_RATE_LIMIT_MS = 1000
 
 export async function runIngestPhase(
     provider: Provider,
@@ -75,7 +75,10 @@ export async function runIngestPhase(
                     completedSessions,
                 })
 
-                await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_MS))
+                const rateLimitMs = provider.rateLimitMs ?? DEFAULT_RATE_LIMIT_MS
+                if (rateLimitMs > 0) {
+                    await new Promise(resolve => setTimeout(resolve, rateLimitMs))
+                }
             }
 
             // Clean up taskIds if empty

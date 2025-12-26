@@ -26,6 +26,7 @@ export interface IngestResult {
 export interface Provider {
     name: string
     prompts?: ProviderPrompts
+    rateLimitMs?: number  // Override default rate limit between session ingests (default: 1000ms)
     initialize(config: ProviderConfig): Promise<void>
     ingest(sessions: UnifiedSession[], options: IngestOptions): Promise<IngestResult>
     awaitIndexing(result: IngestResult, containerTag: string): Promise<void>

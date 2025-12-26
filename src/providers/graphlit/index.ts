@@ -31,9 +31,23 @@ function formatSessionAsMarkdown(session: UnifiedSession): string {
 export class GraphlitProvider implements Provider {
     name = "graphlit"
     prompts = GRAPHLIT_PROMPTS
+    rateLimitMs = 0  // Graphlit handles rate limiting internally
     private client: Graphlit | null = null
     private collectionCache: Map<string, string> = new Map()
-    private firstIngestPerContainer: Set<string> = new Set()
+    private ingestedSessions: Set<string> = new Set()  // Track which sessions we've ingested (by sessionId)
+
+    // Extract conversation ID from containerTag (e.g., "conv-26-q0-run-xxx" -> "conv-26-run-xxx")
+    private getConversationContainerTag(containerTag: string): string {
+        // containerTag format: "{questionId}-{runId}" where questionId is like "conv-26-q0"
+        // We want: "{convId}-{runId}" where convId is like "conv-26"
+        const parts = containerTag.split("-q")
+        if (parts.length >= 2) {
+            const convId = parts[0]  // "conv-26"
+            const rest = parts[1].split("-").slice(1).join("-")  // "run-xxx" (skip the question number)
+            return `${convId}-${rest}`
+        }
+        return containerTag  // Fallback to original if pattern doesn't match
+    }
 
     async initialize(config: ProviderConfig): Promise<void> {
         const graphlitConfig = config.graphlit as {
@@ -60,33 +74,24 @@ export class GraphlitProvider implements Provider {
         }
     }
 
-    private async getOrCreateCollection(name: string, clearExisting: boolean = false): Promise<string> {
+    private async getOrCreateCollection(name: string): Promise<string> {
         if (!this.client) throw new Error("Provider not initialized")
 
-        // Check cache first (already processed this run)
+        // Check cache first
         if (this.collectionCache.has(name)) {
             return this.collectionCache.get(name)!
         }
 
-        // Try to find existing collection by name
+        // Try to find existing collection by name (exact match)
         const existing = await this.client.queryCollections({ name })
         if (existing.collections?.results && existing.collections.results.length > 0) {
-            const id = existing.collections.results[0]!.id
-            
-            if (clearExisting) {
-                // Clear old contents before re-ingesting
-                logger.info(`Clearing existing data in collection: ${name}`)
-                await this.client.deleteAllContents(
-                    { collections: [{ id }], limit: 10000 },
-                    true,
-                )
-                logger.info(`Cleared collection, ready for fresh ingestion`)
-            } else {
-                logger.info(`Reusing existing collection: ${name} (data already ingested)`)
+            // Filter for exact name match (query returns fuzzy results)
+            const exactMatch = existing.collections.results.find(c => c.name === name)
+            if (exactMatch) {
+                this.collectionCache.set(name, exactMatch.id)
+                logger.debug(`Found existing collection: ${name}`)
+                return exactMatch.id
             }
-            
-            this.collectionCache.set(name, id)
-            return id
         }
 
         // Create new collection
@@ -97,25 +102,26 @@ export class GraphlitProvider implements Provider {
 
         const id = result.createCollection.id
         this.collectionCache.set(name, id)
-        logger.info(`Created new collection: ${name}`)
+        logger.info(`Created collection: ${name}`)
         return id
     }
 
     async ingest(sessions: UnifiedSession[], options: IngestOptions): Promise<IngestResult> {
         if (!this.client) throw new Error("Provider not initialized")
 
-        // Check if this is the first ingest call for this containerTag
-        const isFirstIngest = !this.firstIngestPerContainer.has(options.containerTag)
-        if (isFirstIngest) {
-            this.firstIngestPerContainer.add(options.containerTag)
-        }
-        
-        // Ensure collection exists, clear existing contents on first ingest
-        const collectionId = await this.getOrCreateCollection(options.containerTag, isFirstIngest)
+        // Use conversation-level collection instead of question-level
+        const convContainerTag = this.getConversationContainerTag(options.containerTag)
+        const collectionId = await this.getOrCreateCollection(convContainerTag)
 
         const documentIds: string[] = []
 
         for (const session of sessions) {
+            // Skip if we've already ingested this session
+            if (this.ingestedSessions.has(session.sessionId)) {
+                logger.debug(`Skipping session ${session.sessionId} - already ingested`)
+                continue
+            }
+
             const markdown = formatSessionAsMarkdown(session)
 
             const result = await this.client.ingestText(
@@ -125,29 +131,61 @@ export class GraphlitProvider implements Provider {
                 undefined,
                 undefined,
                 session.sessionId,
-                true,  // isSynchronous - wait for indexing
+                false,  // async - poll in awaitIndexing
                 undefined,
                 [{ id: collectionId }],
             )
 
             if (result.ingestText?.id) {
                 documentIds.push(result.ingestText.id)
+                this.ingestedSessions.add(session.sessionId)
                 logger.debug(`Ingested session ${session.sessionId}`)
             }
+        }
+
+        if (documentIds.length > 0) {
+            logger.info(`Ingested ${documentIds.length} sessions into ${convContainerTag}`)
         }
 
         return { documentIds }
     }
 
-    async awaitIndexing(_result: IngestResult, _containerTag: string): Promise<void> {
-        // No-op: isSynchronous=true in ingestText handles indexing
+    async awaitIndexing(result: IngestResult, _containerTag: string): Promise<void> {
+        if (!this.client) throw new Error("Provider not initialized")
+        
+        const contentIds = result.documentIds
+        if (contentIds.length === 0) return
+
+        const pollInterval = 500
+        const timeout = 300000
+        const startTime = Date.now()
+
+        // Poll until all contents are indexed
+        for (const contentId of contentIds) {
+            while (Date.now() - startTime < timeout) {
+                try {
+                    const status = await this.client.isContentDone(contentId)
+                    if (status.isContentDone?.result) {
+                        break
+                    }
+                } catch (e) {
+                    const error = e instanceof Error ? e.message : String(e)
+                    logger.error(`Failed to check content status for ${contentId}: ${error}`)
+                    throw new Error(`Indexing check failed for content ${contentId}: ${error}`)
+                }
+                await new Promise(r => setTimeout(r, pollInterval))
+            }
+        }
+        
+        logger.debug(`Indexing complete for ${contentIds.length} documents`)
     }
 
     async search(query: string, options: SearchOptions): Promise<unknown[]> {
         if (!this.client) throw new Error("Provider not initialized")
 
-        // Get collection ID (should exist from ingest phase)
-        const collectionId = await this.getOrCreateCollection(options.containerTag)
+        // Use conversation-level collection
+        const convContainerTag = this.getConversationContainerTag(options.containerTag)
+        const collectionId = await this.getOrCreateCollection(convContainerTag)
 
         try {
             const response = await this.client.retrieveSources(
@@ -155,7 +193,7 @@ export class GraphlitProvider implements Provider {
                 { collections: [{ id: collectionId }] },
                 undefined,
                 {
-                    type: Types.RetrievalStrategyTypes.Section,
+                    type: Types.RetrievalStrategyTypes.Content,
                     contentLimit: options.limit || 10,
                 },
                 { serviceType: Types.RerankingModelServiceTypes.Cohere },
@@ -175,27 +213,30 @@ export class GraphlitProvider implements Provider {
     async clear(containerTag: string): Promise<void> {
         if (!this.client) throw new Error("Provider not initialized")
 
+        // Use conversation-level collection
+        const convContainerTag = this.getConversationContainerTag(containerTag)
+
         try {
             // Get collection ID
-            const collectionId = this.collectionCache.get(containerTag)
+            const collectionId = this.collectionCache.get(convContainerTag)
             if (!collectionId) {
-                // Try to find by name
-                const existing = await this.client.queryCollections({ name: containerTag })
-                if (!existing.collections?.results || existing.collections.results.length === 0) {
-                    logger.debug(`No collection found to clear: ${containerTag}`)
+                // Try to find by name (exact match)
+                const existing = await this.client.queryCollections({ name: convContainerTag })
+                const exactMatch = existing.collections?.results?.find(c => c.name === convContainerTag)
+                if (!exactMatch) {
+                    logger.debug(`No collection found to clear: ${convContainerTag}`)
                     return
                 }
-                const id = existing.collections.results[0]!.id
 
                 // Delete all contents in the collection (set high limit to ensure all are deleted)
                 await this.client.deleteAllContents(
-                    { collections: [{ id }], limit: 10000 },
+                    { collections: [{ id: exactMatch.id }], limit: 10000 },
                     true,
                 )
 
                 // Delete the collection itself
-                await this.client.deleteCollection(id)
-                logger.info(`Cleared and deleted collection: ${containerTag}`)
+                await this.client.deleteCollection(exactMatch.id)
+                logger.info(`Cleared and deleted collection: ${convContainerTag}`)
             } else {
                 // Delete all contents in the collection (set high limit to ensure all are deleted)
                 await this.client.deleteAllContents(
@@ -205,12 +246,12 @@ export class GraphlitProvider implements Provider {
 
                 // Delete the collection itself
                 await this.client.deleteCollection(collectionId)
-                this.collectionCache.delete(containerTag)
-                logger.info(`Cleared and deleted collection: ${containerTag}`)
+                this.collectionCache.delete(convContainerTag)
+                logger.info(`Cleared and deleted collection: ${convContainerTag}`)
             }
         } catch (e) {
             const error = e instanceof Error ? e.message : String(e)
-            logger.warn(`Failed to clear collection ${containerTag}: ${error}`)
+            logger.warn(`Failed to clear collection ${convContainerTag}: ${error}`)
         }
     }
 }
