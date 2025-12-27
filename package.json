@@ -12,7 +12,7 @@
     "bench:graphlit:convomem": "bun run src/index.ts run -p graphlit -b convomem",
     "bench:graphlit:quick": "bun run src/index.ts run -p graphlit -b locomo -l 5",
     "bench:graphlit:small": "bun run src/index.ts run -p graphlit -b locomo -l 50 -j gpt-4.1",
-    "bench:graphlit:medium": "bun run src/index.ts run -p graphlit -b locomo -l 200",
+    "bench:graphlit:medium": "bun run src/index.ts run -p graphlit -b locomo -l 200 -j gpt-4.1",
     "compare": "bun run src/index.ts compare",
     "compare:locomo": "bun run src/index.ts compare -p graphlit,supermemory,mem0,zep -b locomo",
     "compare:longmemeval": "bun run src/index.ts compare -p graphlit,supermemory,mem0,zep -b longmemeval",
