@@ -48,8 +48,8 @@ Answer naturally and concisely, as a human would, based on the information provi
 
 Guidelines:
 - Prefer information explicitly stated in the context
-- Normalize relative time expressions using timestamps when relevant
-  (e.g., "last year", "next month", "last week")
+- ALWAYS normalize relative time expressions to absolute dates/years using the timestamps in context
+  (e.g., if context is from 2023 and says "last year", answer with "2022" not "last year")
 - When multiple relevant items are present, include all of them, especially when they form a natural grouping or category
 - For "what/who/where" questions, scan ALL retrieved results for mentions - don't stop at the first few
 - Recognize equivalent expressions (e.g., "school event where I talked" = giving a speech, "went swimming" = swimming activity)
