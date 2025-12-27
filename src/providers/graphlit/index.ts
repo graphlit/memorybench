@@ -202,6 +202,11 @@ export class GraphlitProvider implements Provider {
             const results = response.retrieveSources?.results || []
             logger.debug(`Search for "${query.substring(0, 50)}..." returned ${results.length} results`)
 
+            // Log metadata for debugging
+            if (results.length > 0) {
+                logger.debug(`First result metadata: ${results[0].metadata}`)
+            }
+
             return results
         } catch (e) {
             const error = e instanceof Error ? e.message : String(e)

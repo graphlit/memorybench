@@ -110,14 +110,24 @@ export async function runAnswerPhase(
 
             const prompt = buildAnswerPrompt(question.question, context, questionDate, provider)
 
+            // Log full prompt for debugging (only first question or when DEBUG_PROMPT env is set)
+            if (process.env.DEBUG_PROMPT === question.questionId || (i === 0 && process.env.DEBUG_PROMPT === "first")) {
+                console.log("\n" + "=".repeat(80))
+                console.log("PROMPT FOR:", question.questionId)
+                console.log("=".repeat(80))
+                console.log(prompt)
+                console.log("=".repeat(80) + "\n")
+            }
+
             const params: Record<string, unknown> = {
                 model: client(modelConfig.id),
-                prompt,
+                messages: [{ role: "user", content: prompt }],
                 maxTokens: modelConfig.defaultMaxTokens,
             }
 
             if (modelConfig.supportsTemperature) {
                 params.temperature = modelConfig.defaultTemperature
+                params.topP = 1
             }
 
             const { text } = await generateText(params as Parameters<typeof generateText>[0])
